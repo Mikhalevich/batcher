@@ -2,6 +2,7 @@ package batcher
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -134,4 +135,58 @@ func Test_BatchStopConcurrent(t *testing.T) {
 
 	err := b.Stop()
 	assert.NoError(t, err)
+}
+
+func Test_BatchGenerics(t *testing.T) {
+	t.Run("int", func(t *testing.T) {
+		b := New("test_generic_int", func(datas ...int) error {
+			fmt.Printf("received int data: %v\n", datas)
+			return nil
+		},
+			WithMaxBatchSize(10),
+			WithMaxWaitInterval(300*time.Millisecond),
+			WithLogrusLogger(logrus.StandardLogger()),
+		)
+
+		err := b.Insert([]int{1, 2, 3, 4, 5, 6, 7}...)
+		assert.NoError(t, err)
+		err = b.Stop()
+		assert.NoError(t, err)
+	})
+
+	t.Run("string", func(t *testing.T) {
+		b := New("test_generic_string", func(datas ...string) error {
+			fmt.Printf("received string data: %v\n", datas)
+			return nil
+		},
+			WithMaxBatchSize(10),
+			WithMaxWaitInterval(300*time.Millisecond),
+			WithLogrusLogger(logrus.StandardLogger()),
+		)
+
+		err := b.Insert([]string{"one", "two"}...)
+		assert.NoError(t, err)
+		err = b.Stop()
+		assert.NoError(t, err)
+	})
+
+	t.Run("struct", func(t *testing.T) {
+		type TestStruct struct {
+			TestField string
+		}
+
+		b := New("test_generic_struct", func(datas ...TestStruct) error {
+			fmt.Printf("received struct data: %v\n", datas)
+			return nil
+		},
+			WithMaxBatchSize(10),
+			WithMaxWaitInterval(300*time.Millisecond),
+			WithLogrusLogger(logrus.StandardLogger()),
+		)
+
+		err := b.Insert([]TestStruct{{"one"}, {"two"}}...)
+		assert.NoError(t, err)
+		err = b.Stop()
+		assert.NoError(t, err)
+	})
 }

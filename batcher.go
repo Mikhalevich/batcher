@@ -9,39 +9,39 @@ import (
 )
 
 // A BatchDoFn is batch worker func.
-type BatchDoFn func(data ...interface{}) error
+type BatchDoFn[T any] func(data ...T) error
 
 // flushRequest contains data that should be cleared in batch.
-type flushRequest struct {
-	data []interface{}
+type flushRequest[T any] struct {
+	data []T
 }
 
 // ErrStopped is the error returned when batch is stopped.
 var ErrStopped = errors.New("batcher is closed")
 
-type batcher struct {
+type batcher[T any] struct {
 	// batch data storage.
-	items []interface{}
+	items []T
 	// doFn handler used for batch data processing by workers.
-	doFn BatchDoFn
+	doFn BatchDoFn[T]
 
 	// used for waiting until all workers completed before stop the batch.
 	workersGroup sync.WaitGroup
 
 	// used for sending flushRequest to workers.
-	reqChan chan flushRequest
+	reqChan chan flushRequest[T]
 	// batch state flag shows whether batch is ready to accept data.
 	isRunning  bool
 	runningMtx sync.RWMutex
 
 	// used for inserting new data into batch.
-	insertChan chan interface{}
+	insertChan chan T
 
 	opts options
 }
 
 // New creates new batcher.
-func New(name string, flushHandler BatchDoFn, opts ...option) *batcher {
+func New[T any](name string, flushHandler BatchDoFn[T], opts ...option) *batcher[T] {
 	defaultOptions := options{
 		MaxBatchSize:    10,
 		MaxWaitInterval: time.Second * 10,
@@ -55,13 +55,13 @@ func New(name string, flushHandler BatchDoFn, opts ...option) *batcher {
 
 	defaultOptions.Logger = defaultOptions.Logger.WithField("worker_name", name)
 
-	b := batcher{
-		items:        make([]interface{}, 0, defaultOptions.MaxBatchSize+1),
+	b := batcher[T]{
+		items:        make([]T, 0, defaultOptions.MaxBatchSize+1),
 		doFn:         flushHandler,
 		workersGroup: sync.WaitGroup{},
-		reqChan:      make(chan flushRequest, defaultOptions.WorkersCount),
+		reqChan:      make(chan flushRequest[T], defaultOptions.WorkersCount),
 		isRunning:    true,
-		insertChan:   make(chan interface{}, defaultOptions.MaxBatchSize),
+		insertChan:   make(chan T, defaultOptions.MaxBatchSize),
 		opts:         defaultOptions,
 	}
 
@@ -72,11 +72,11 @@ func New(name string, flushHandler BatchDoFn, opts ...option) *batcher {
 	return &b
 }
 
-func (b *batcher) runFlushWorkers() {
+func (b *batcher[T]) runFlushWorkers() {
 	for id := 1; id <= b.opts.WorkersCount; id++ {
 		b.workersGroup.Add(1)
 
-		go func(workerID int, req <-chan flushRequest) {
+		go func(workerID int, req <-chan flushRequest[T]) {
 			defer b.workersGroup.Done()
 
 			for r := range req {
@@ -91,7 +91,7 @@ func (b *batcher) runFlushWorkers() {
 	}
 }
 
-func (b *batcher) Insert(data ...interface{}) error {
+func (b *batcher[T]) Insert(data ...T) error {
 	b.runningMtx.RLock()
 	defer b.runningMtx.RUnlock()
 
@@ -106,7 +106,7 @@ func (b *batcher) Insert(data ...interface{}) error {
 	return nil
 }
 
-func (b *batcher) Stop() error {
+func (b *batcher[T]) Stop() error {
 	b.runningMtx.Lock()
 	defer b.runningMtx.Unlock()
 
@@ -121,15 +121,15 @@ func (b *batcher) Stop() error {
 	return nil
 }
 
-func (b *batcher) sendFlushRequest() {
-	b.reqChan <- flushRequest{
-		data: append([]interface{}{}, b.items...),
+func (b *batcher[T]) sendFlushRequest() {
+	b.reqChan <- flushRequest[T]{
+		data: append([]T{}, b.items...),
 	}
 
 	b.items = b.items[:0]
 }
 
-func (b *batcher) run() {
+func (b *batcher[T]) run() {
 	b.opts.Logger.Info("worker started")
 	defer b.opts.Logger.Info("worker stopped")
 
