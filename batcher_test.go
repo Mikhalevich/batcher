@@ -138,6 +138,22 @@ func Test_BatchStopConcurrent(t *testing.T) {
 }
 
 func Test_BatchGenerics(t *testing.T) {
+	t.Run("interface{}", func(t *testing.T) {
+		b := New("test_generic_interface{}", func(datas ...interface{}) error {
+			fmt.Printf("received interface{} data: %v\n", datas)
+			return nil
+		},
+			WithMaxBatchSize(10),
+			WithMaxWaitInterval(300*time.Millisecond),
+			WithLogrusLogger(logrus.StandardLogger()),
+		)
+
+		err := b.Insert(generateTestData(20)...)
+		assert.NoError(t, err)
+		err = b.Stop()
+		assert.NoError(t, err)
+	})
+
 	t.Run("int", func(t *testing.T) {
 		b := New("test_generic_int", func(datas ...int) error {
 			fmt.Printf("received int data: %v\n", datas)
