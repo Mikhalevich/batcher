@@ -17,7 +17,7 @@ type flushRequest struct {
 }
 
 // ErrStopped is the error returned when batch is stopped.
-var ErrStopped = errors.New("batch closed")
+var ErrStopped = errors.New("batcher is closed")
 
 type batcher struct {
 	// batch data storage.
@@ -31,7 +31,8 @@ type batcher struct {
 	// used for sending flushRequest to workers.
 	reqChan chan flushRequest
 	// batch state flag shows whether batch is ready to accept data.
-	isRunning bool
+	isRunning  bool
+	runningMtx sync.RWMutex
 
 	// used for inserting new data into batch.
 	insertChan chan interface{}
@@ -91,6 +92,9 @@ func (b *batcher) runFlushWorkers() {
 }
 
 func (b *batcher) Insert(data ...interface{}) error {
+	b.runningMtx.RLock()
+	defer b.runningMtx.RUnlock()
+
 	if !b.isRunning {
 		return ErrStopped
 	}
@@ -103,9 +107,14 @@ func (b *batcher) Insert(data ...interface{}) error {
 }
 
 func (b *batcher) Stop() error {
+	b.runningMtx.Lock()
+	defer b.runningMtx.Unlock()
+
 	if !b.isRunning {
 		return ErrStopped
 	}
+
+	b.isRunning = false
 
 	close(b.insertChan)
 	b.workersGroup.Wait()
@@ -142,7 +151,6 @@ func (b *batcher) run() {
 			}
 		case item, ok := <-b.insertChan:
 			if !ok {
-				b.isRunning = false
 				return
 			}
 

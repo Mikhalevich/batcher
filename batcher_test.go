@@ -1,6 +1,7 @@
 package batcher
 
 import (
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -107,5 +108,30 @@ func Test_BatchStopNegative(t *testing.T) {
 	err := b.Stop()
 	assert.NoError(t, err)
 
-	assert.EqualError(t, b.Insert("should not be inserted"), "batch closed")
+	assert.EqualError(t, b.Insert("should not be inserted"), ErrStopped.Error())
+}
+
+func Test_BatchStopConcurrent(t *testing.T) {
+	b := New("test_stop_concurrent", func(datas ...interface{}) error {
+		return nil
+	},
+		WithMaxBatchSize(10),
+		WithMaxWaitInterval(300*time.Millisecond),
+		WithWorkersCount(3),
+		WithLogrusLogger(logrus.StandardLogger()),
+	)
+
+	go func() {
+		for {
+			err := b.Insert(generateTestData(5)...)
+			if errors.Is(err, ErrStopped) {
+				break
+			}
+		}
+	}()
+
+	time.Sleep(time.Millisecond * 100)
+
+	err := b.Stop()
+	assert.NoError(t, err)
 }
