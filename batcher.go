@@ -8,6 +8,12 @@ import (
 	"github.com/Mikhalevich/batcher/pkg/logger"
 )
 
+const (
+	defaultMaxBatchSize    = 10
+	defaultMaxWaitInterval = time.Second * 10
+	defaultWorkersCount    = 4
+)
+
 // A BatchDoFn is batch worker func.
 type BatchDoFn[T any] func(data ...T) error
 
@@ -43,9 +49,9 @@ type batcher[T any] struct {
 // New creates new batcher.
 func New[T any](name string, flushHandler BatchDoFn[T], opts ...option) *batcher[T] {
 	defaultOptions := options{
-		MaxBatchSize:    10,
-		MaxWaitInterval: time.Second * 10,
-		WorkersCount:    4,
+		MaxBatchSize:    defaultMaxBatchSize,
+		MaxWaitInterval: defaultMaxWaitInterval,
+		WorkersCount:    defaultWorkersCount,
 		Logger:          logger.NewNullWrapper(),
 	}
 
@@ -55,7 +61,7 @@ func New[T any](name string, flushHandler BatchDoFn[T], opts ...option) *batcher
 
 	defaultOptions.Logger = defaultOptions.Logger.WithField("worker_name", name)
 
-	b := batcher[T]{
+	bat := batcher[T]{
 		items:        make([]T, 0, defaultOptions.MaxBatchSize+1),
 		doFn:         flushHandler,
 		workersGroup: sync.WaitGroup{},
@@ -65,15 +71,15 @@ func New[T any](name string, flushHandler BatchDoFn[T], opts ...option) *batcher
 		opts:         defaultOptions,
 	}
 
-	b.runFlushWorkers()
+	bat.runFlushWorkers()
 
-	go b.run()
+	go bat.run()
 
-	return &b
+	return &bat
 }
 
 func (b *batcher[T]) runFlushWorkers() {
-	for id := 1; id <= b.opts.WorkersCount; id++ {
+	for workerID := 1; workerID <= b.opts.WorkersCount; workerID++ {
 		b.workersGroup.Add(1)
 
 		go func(workerID int, req <-chan flushRequest[T]) {
@@ -87,7 +93,7 @@ func (b *batcher[T]) runFlushWorkers() {
 						Error("failed to flush task")
 				}
 			}
-		}(id, b.reqChan)
+		}(workerID, b.reqChan)
 	}
 }
 
@@ -118,6 +124,7 @@ func (b *batcher[T]) Stop() error {
 
 	close(b.insertChan)
 	b.workersGroup.Wait()
+
 	return nil
 }
 
@@ -133,22 +140,24 @@ func (b *batcher[T]) run() {
 	b.opts.Logger.Info("worker started")
 	defer b.opts.Logger.Info("worker stopped")
 
-	t := time.NewTicker(b.opts.MaxWaitInterval)
-	defer t.Stop()
+	ticker := time.NewTicker(b.opts.MaxWaitInterval)
+	defer ticker.Stop()
 
 	defer func() {
 		if len(b.items) > 0 {
 			b.sendFlushRequest()
 		}
+
 		close(b.reqChan)
 	}()
 
 	for {
 		select {
-		case <-t.C:
+		case <-ticker.C:
 			if len(b.items) > 0 {
 				b.sendFlushRequest()
 			}
+
 		case item, ok := <-b.insertChan:
 			if !ok {
 				return

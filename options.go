@@ -9,7 +9,8 @@ import (
 )
 
 type options struct {
-	// MaxBatchSize the limit when batch reaches this limit it will be cleared (if 1 or 0 is passed - data will be processed immediately).
+	// MaxBatchSize the limit when batch reaches this limit it will be cleared.
+	// (if 1 or 0 is passed - data will be processed immediately).
 	MaxBatchSize int
 	// max batch clearing interval.
 	MaxWaitInterval time.Duration
