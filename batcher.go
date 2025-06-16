@@ -25,13 +25,14 @@ type flushRequest[T any] struct {
 // ErrStopped is the error returned when batch is stopped.
 var ErrStopped = errors.New("batcher is closed")
 
-type batcher[T any] struct {
-	// batch data storage.
+// Batcher structure.
+type Batcher[T any] struct {
+	// data items to process in batches.
 	items []T
 	// doFn handler used for batch data processing by workers.
 	doFn BatchDoFn[T]
 
-	// used for waiting until all workers completed before stop the batch.
+	// used for waiting until all workers completed before stop the batcher.
 	workersGroup sync.WaitGroup
 
 	// used for sending flushRequest to workers.
@@ -46,8 +47,8 @@ type batcher[T any] struct {
 	opts options
 }
 
-// New creates new batcher.
-func New[T any](name string, flushHandler BatchDoFn[T], opts ...option) *batcher[T] {
+// New creates new Batcher instance.
+func New[T any](name string, flushHandler BatchDoFn[T], opts ...Option) *Batcher[T] {
 	defaultOptions := options{
 		MaxBatchSize:    defaultMaxBatchSize,
 		MaxWaitInterval: defaultMaxWaitInterval,
@@ -61,7 +62,7 @@ func New[T any](name string, flushHandler BatchDoFn[T], opts ...option) *batcher
 
 	defaultOptions.Logger = defaultOptions.Logger.WithField("worker_name", name)
 
-	bat := batcher[T]{
+	bat := Batcher[T]{
 		items:        make([]T, 0, defaultOptions.MaxBatchSize+1),
 		doFn:         flushHandler,
 		workersGroup: sync.WaitGroup{},
@@ -78,7 +79,7 @@ func New[T any](name string, flushHandler BatchDoFn[T], opts ...option) *batcher
 	return &bat
 }
 
-func (b *batcher[T]) runFlushWorkers() {
+func (b *Batcher[T]) runFlushWorkers() {
 	for workerID := 1; workerID <= b.opts.WorkersCount; workerID++ {
 		b.workersGroup.Add(1)
 
@@ -97,7 +98,9 @@ func (b *batcher[T]) runFlushWorkers() {
 	}
 }
 
-func (b *batcher[T]) Insert(data ...T) error {
+// Insert add data to batch processing.
+// if batcher is stopped returns ErrStoped error.
+func (b *Batcher[T]) Insert(data ...T) error {
 	b.runningMtx.RLock()
 	defer b.runningMtx.RUnlock()
 
@@ -112,7 +115,10 @@ func (b *batcher[T]) Insert(data ...T) error {
 	return nil
 }
 
-func (b *batcher[T]) Stop() error {
+// Stop graciffully shutdown batcher by stopping receiving new data for batch processing.
+// and process all data which received before Stop call.
+// if batcher is already stopped ErrStopped error returned.
+func (b *Batcher[T]) Stop() error {
 	b.runningMtx.Lock()
 	defer b.runningMtx.Unlock()
 
@@ -128,7 +134,7 @@ func (b *batcher[T]) Stop() error {
 	return nil
 }
 
-func (b *batcher[T]) sendFlushRequest() {
+func (b *Batcher[T]) sendFlushRequest() {
 	b.reqChan <- flushRequest[T]{
 		data: append([]T{}, b.items...),
 	}
@@ -136,7 +142,7 @@ func (b *batcher[T]) sendFlushRequest() {
 	b.items = b.items[:0]
 }
 
-func (b *batcher[T]) run() {
+func (b *Batcher[T]) run() {
 	b.opts.Logger.Info("worker started")
 	defer b.opts.Logger.Info("worker stopped")
 
