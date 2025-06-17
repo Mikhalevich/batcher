@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Mikhalevich/batcher/pkg/logger"
+	"github.com/Mikhalevich/batcher/logger"
 )
 
 const (
@@ -53,7 +53,7 @@ func New[T any](name string, flushHandler BatchDoFn[T], opts ...Option) *Batcher
 		MaxBatchSize:    defaultMaxBatchSize,
 		MaxWaitInterval: defaultMaxWaitInterval,
 		WorkersCount:    defaultWorkersCount,
-		Logger:          logger.NewNullWrapper(),
+		Logger:          logger.NewNoop(),
 	}
 
 	for _, o := range opts {

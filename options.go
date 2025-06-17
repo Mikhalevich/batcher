@@ -5,7 +5,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/Mikhalevich/batcher/pkg/logger"
+	"github.com/Mikhalevich/batcher/logger"
 )
 
 type options struct {
@@ -54,6 +54,6 @@ func WithLogger(logger logger.Logger) Option {
 // WithLogrusLogger set logrus loggger for batch worker.
 func WithLogrusLogger(log *logrus.Logger) Option {
 	return func(opts *options) {
-		opts.Logger = logger.NewLogrusWrapper(log)
+		opts.Logger = logger.NewLogrus(log)
 	}
 }
