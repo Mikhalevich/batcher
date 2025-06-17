@@ -22,7 +22,7 @@ type flushRequest[T any] struct {
 	data []T
 }
 
-// ErrStopped is the error returned when batch is stopped.
+// ErrStopped is the error returned when batcher is stopped.
 var ErrStopped = errors.New("batcher is closed")
 
 // Batcher structure.
