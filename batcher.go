@@ -171,6 +171,7 @@ func (b *Batcher[T]) run() {
 
 			b.items = append(b.items, item)
 			if len(b.items) >= b.opts.MaxBatchSize {
+				ticker.Reset(b.opts.MaxWaitInterval)
 				b.sendFlushRequest()
 			}
 		}
