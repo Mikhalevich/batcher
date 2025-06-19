@@ -4,6 +4,7 @@ import (
 	"context"
 )
 
+// Noop is no operations imlementation of Logger interface.
 type Noop struct {
 }
 

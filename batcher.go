@@ -48,7 +48,7 @@ type Batcher[T any] struct {
 }
 
 // New creates new Batcher instance.
-func New[T any](name string, flushHandler BatchDoFn[T], opts ...Option) *Batcher[T] {
+func New[T any](flushHandler BatchDoFn[T], opts ...Option) *Batcher[T] {
 	defaultOptions := options{
 		MaxBatchSize:    defaultMaxBatchSize,
 		MaxWaitInterval: defaultMaxWaitInterval,
@@ -59,8 +59,6 @@ func New[T any](name string, flushHandler BatchDoFn[T], opts ...Option) *Batcher
 	for _, o := range opts {
 		o(&defaultOptions)
 	}
-
-	defaultOptions.Logger = defaultOptions.Logger.WithField("worker_name", name)
 
 	bat := Batcher[T]{
 		items:        make([]T, 0, defaultOptions.MaxBatchSize+1),

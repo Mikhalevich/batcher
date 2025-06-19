@@ -32,7 +32,7 @@ func Test_BatchInsertOneByOne(t *testing.T) {
 		collected      = make([]interface{}, 0, len(testData))
 	)
 
-	bat := batcher.New("test_one_by_one", func(datas ...interface{}) error {
+	bat := batcher.New(func(datas ...interface{}) error {
 		mut.Lock()
 		collected = append(collected, datas...)
 		mut.Unlock()
@@ -73,7 +73,7 @@ func Test_BatchInsertList(t *testing.T) {
 		collected      = make([]interface{}, 0, len(testData))
 	)
 
-	bat := batcher.New("test_insert_list", func(datas ...interface{}) error {
+	bat := batcher.New(func(datas ...interface{}) error {
 		mut.Lock()
 		collected = append(collected, datas...)
 		mut.Unlock()
@@ -105,7 +105,7 @@ func Test_BatchInsertList(t *testing.T) {
 func Test_BatchStopNegative(t *testing.T) {
 	t.Parallel()
 
-	bat := batcher.New("test_stop_negative", func(datas ...interface{}) error {
+	bat := batcher.New(func(datas ...interface{}) error {
 		return nil
 	},
 		batcher.WithMaxBatchSize(10),
@@ -123,7 +123,7 @@ func Test_BatchStopNegative(t *testing.T) {
 func Test_BatchStopConcurrent(t *testing.T) {
 	t.Parallel()
 
-	bat := batcher.New("test_stop_concurrent", func(datas ...interface{}) error {
+	bat := batcher.New(func(datas ...interface{}) error {
 		return nil
 	},
 		batcher.WithMaxBatchSize(10),
@@ -153,7 +153,7 @@ func Test_BatchGenerics(t *testing.T) {
 	t.Run("interface{}", func(t *testing.T) {
 		t.Parallel()
 
-		bat := batcher.New("test_generic_interface{}", func(datas ...interface{}) error {
+		bat := batcher.New(func(datas ...interface{}) error {
 			return nil
 		},
 			batcher.WithMaxBatchSize(10),
@@ -170,7 +170,7 @@ func Test_BatchGenerics(t *testing.T) {
 	t.Run("int", func(t *testing.T) {
 		t.Parallel()
 
-		bat := batcher.New("test_generic_int", func(datas ...int) error {
+		bat := batcher.New(func(datas ...int) error {
 			return nil
 		},
 			batcher.WithMaxBatchSize(10),
@@ -187,7 +187,7 @@ func Test_BatchGenerics(t *testing.T) {
 	t.Run("string", func(t *testing.T) {
 		t.Parallel()
 
-		bat := batcher.New("test_generic_string", func(datas ...string) error {
+		bat := batcher.New(func(datas ...string) error {
 			return nil
 		},
 			batcher.WithMaxBatchSize(10),
@@ -208,7 +208,7 @@ func Test_BatchGenerics(t *testing.T) {
 			TestField string
 		}
 
-		bat := batcher.New("test_generic_struct", func(datas ...TestStruct) error {
+		bat := batcher.New(func(datas ...TestStruct) error {
 			return nil
 		},
 			batcher.WithMaxBatchSize(10),
