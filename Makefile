@@ -14,7 +14,7 @@ build:
 	go build
 
 test:
-	go test ./...
+	go test ./... -cover
 
 tidy:
 	go mod tidy

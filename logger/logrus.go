@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Logrus is logrus implementation of Logger interface.
 type Logrus struct {
 	l *logrus.Entry
 }
