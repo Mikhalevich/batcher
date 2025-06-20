@@ -18,7 +18,7 @@ import (
 
 func main() {
 	//nolint:mnd
-	bat := batcher.New("example", func(datas ...int) error {
+	bat := batcher.New(func(datas ...int) error {
 		log.Printf("received batch data: %v\n", datas)
 
 		return nil
